@@ -137,3 +137,61 @@ class Agnostic_Grasp:
         joint_angles[22] = 0.7
         for i in range(28):
             self.pb.resetJointState(self.hand, i, joint_angles[i])
+
+            
+class Parallel_Gripper_Simple:
+    def __init__(self, pb, hand, left_joint, right_joint):
+        self.pb, self.hand = pb, hand
+        from pterotactyl.utility import utils
+        self.directions = -utils.get_circle(50).points.data.numpy()
+        self.convex_mesh = None; self.verts = None
+        self.left_joint, self.right_joint = left_joint, right_joint
+
+    def set_object(self, verts, faces):
+        from scipy.spatial import ConvexHull
+        import trimesh
+        hull = ConvexHull(verts.data.numpy())
+        self.convex_mesh = trimesh.Trimesh(vertices=verts, faces=hull.simplices, process=False)
+        self.verts = verts.data.numpy()
+
+    def remove_object(self):
+        self.convex_mesh = None; self.verts = None
+
+    def action_to_params(self, action):
+        return self.directions[action], 0
+
+    def reset_hand(self):
+        self.pb.resetBasePositionAndOrientation(self.hand, [20,0,0], [1,0,0,0])
+        self.pb.resetJointState(self.hand, self.left_joint,  0.0)
+        self.pb.resetJointState(self.hand, self.right_joint, 0.0)
+
+    def _place_on_hull(self, direction, rotation, hand_distance=0.013):
+        import numpy as np
+        ray_origins = np.array([[0,0,0]])
+        locs, _, idx_tri = self.convex_mesh.ray.intersects_location(
+            ray_origins=ray_origins, ray_directions=np.array([direction])
+        )
+        if len(locs)==0: return False
+        test = (np.array(locs)**2).sum(axis=-1); point = locs[test.argmax()]
+        face = self.convex_mesh.faces[idx_tri[0]]
+
+        from pterotactyl.utility import utils as U
+        p1,p2,p3 = self.verts[face[0]], self.verts[face[1]], self.verts[face[2]]
+        n = U.normal_from_triangle(p1,p2,p3)
+        o = np.array([0,0,0])
+        if ((o-point)**2).sum() > ((o-(point+n*1e-4))**2).sum(): n = -n
+        pos = point + n*hand_distance
+        ori = U.combine_quats(U.quats_from_vectors([-1,0,0], n-1e-3),
+                              self.pb.getQuaternionFromEuler([rotation,0,0]))
+        self.pb.resetBasePositionAndOrientation(self.hand, pos, ori)
+        return True
+
+    def grasp(self, action, jaw_width=0.0):
+        self.reset_hand()
+        direction, rotation = self.action_to_params(action)
+        if not self._place_on_hull(direction, rotation): return False
+        half = jaw_width/2.0
+        self.pb.setJointMotorControl2(self.hand, self.left_joint,  self.pb.POSITION_CONTROL, targetPosition=-half)
+        self.pb.setJointMotorControl2(self.hand, self.right_joint, self.pb.POSITION_CONTROL, targetPosition=+half)
+        for _ in range(5): self.pb.stepSimulation()
+        return True

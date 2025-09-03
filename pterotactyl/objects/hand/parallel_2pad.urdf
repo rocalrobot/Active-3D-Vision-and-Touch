@@ -1,0 +1,49 @@
+
+<?xml version="1.0" ?>
+<robot name="parallel_2pad">
+
+  <!-- Base -->
+  <link name="base">
+    <inertial><mass value="0.1"/><origin xyz="0 0 0"/><inertia ixx="1e-4" iyy="1e-4" izz="1e-4" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz="0 0 0" rpy="0 0 0"/><geometry><box size="0.04 0.04 0.04"/></geometry></visual>
+    <collision><origin xyz="0 0 0" rpy="0 0 0"/><geometry><box size="0.04 0.04 0.04"/></geometry></collision>
+  </link>
+
+  <!-- Left finger (sensor pad) -->
+  <link name="left_pad">
+    <inertial><mass value="0.02"/><origin xyz="0 0 0"/><inertia ixx="1e-5" iyy="1e-5" izz="1e-5" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz="0 0 0.06" rpy="0 0 0"/><geometry>
+      <box size="0.028 0.028 0.034"/>
+    </geometry></visual>
+    <collision><origin xyz="0 0 0.06" rpy="0 0 0"/><geometry>
+      <box size="0.028 0.028 0.034"/>
+    </geometry></collision>
+  </link>
+
+  <!-- Right finger (sensor pad) -->
+  <link name="right_pad">
+    <inertial><mass value="0.02"/><origin xyz="0 0 0"/><inertia ixx="1e-5" iyy="1e-5" izz="1e-5" ixy="0" ixz="0" iyz="0"/></inertial>
+    <visual><origin xyz="0 0 0.06" rpy="0 0 0"/><geometry>
+      <box size="0.028 0.028 0.034"/>
+    </geometry></visual>
+    <collision><origin xyz="0 0 0.06" rpy="0 0 0"/><geometry>
+      <box size="0.028 0.028 0.034"/>
+    </geometry></collision>
+  </link>
+
+  <!-- Two prismatic joints sliding along X (parallel jaws) -->
+  <joint name="left_slide" type="prismatic">
+    <parent link="base"/><child link="left_pad"/>
+    <origin xyz="0 0 0.06" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit effort="10" lower="-0.05" upper="0" velocity="0.2"/>
+  </joint>
+
+  <joint name="right_slide" type="prismatic">
+    <parent link="base"/><child link="right_pad"/>
+    <origin xyz="0 0 0.06" rpy="0 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit effort="10" lower="0" upper="0.05" velocity="0.2"/>
+  </joint>
+
+</robot>
